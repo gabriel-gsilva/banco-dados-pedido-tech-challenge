@@ -75,6 +75,23 @@ resource "aws_security_group" "db_sg" {
   }
 }
 
+resource "aws_security_group" "lambda_sg" {
+  name        = "${var.db_name}-lambda-sg"
+  description = "Security group for Lambda function"
+  vpc_id      = aws_vpc.vpc.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.db_name}-lambda-sg"
+  }
+}
+
 resource "aws_db_subnet_group" "default" {
   name_prefix = "${lower(var.db_name)}-subnet-group-"
   subnet_ids  = aws_subnet.main_subnet[*].id
@@ -119,21 +136,26 @@ data "archive_file" "lambda_zip" {
 }
 
 resource "aws_iam_role" "lambda_role" {
-  name               = "${var.db_name}-lambda-role"
+  name = "${var.db_name}-lambda-role"
 
-   assume_role_policy= jsonencode({
-     Version= "2012-10-17",
-     Statement= [{
-       Action= "sts:AssumeRole",
-       Effect= "Allow",
-       Principal= {Service= ["lambda.amazonaws.com"]}
-     }]
-   })
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
+      Principal = { Service = ["lambda.amazonaws.com"] }
+    }]
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
- policy_arn= "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
- role= aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role       = aws_iam_role.lambda_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  role       = aws_iam_role.lambda_role.name
 }
 
 resource "aws_lambda_function" "db_setup" {
@@ -143,6 +165,11 @@ resource "aws_lambda_function" "db_setup" {
   handler          = "lambda_function.lambda_handler"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   runtime          = "python3.9"
+
+  vpc_config {
+    subnet_ids         = aws_subnet.main_subnet[*].id
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
 
   environment {
     variables = {
