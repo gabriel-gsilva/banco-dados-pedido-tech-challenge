@@ -29,6 +29,7 @@ resource "aws_subnet" "main_subnet" {
 
   tags = {
     Name = "subnet-${var.db_name}-${count.index + 1}"
+    VPC  = aws_vpc.vpc.id
   }
 }
 
@@ -121,7 +122,7 @@ resource "aws_db_instance" "mydb" {
   backup_window           = "07:00-09:00"
   vpc_security_group_ids  = [aws_security_group.db_sg.id]
   db_subnet_group_name    = aws_db_subnet_group.default.name
-  publicly_accessible     = true
+  publicly_accessible     = var.db_publicly_accessible
 
   tags = {
     Name        = var.db_name

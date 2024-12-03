@@ -1,31 +1,23 @@
 variable "region" {
-  description = "A região da AWS onde os recursos serão criados"
   type        = string
-  default     = "sa-east-1"
+  description = "A região da AWS onde os recursos serão criados"
+  default     = "us-east-1"
 }
 
 variable "vpc_cidr" {
-  description = "O bloco CIDR para a VPC"
   type        = string
+  description = "CIDR block para a VPC"
   default     = "10.0.0.0/16"
 }
 
 variable "vpc_subnets" {
-  description = "Lista de CIDRs para as subnets da VPC"
   type        = list(string)
+  description = "Lista de CIDRs das sub-redes para a VPC"
   default     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-}
-
-variable "db_allocated_storage" {
-  description = "O tamanho do armazenamento alocado para o banco de dados RDS em gigabytes"
-  type        = number
-  default     = 20
-}
-
-variable "db_instance_class" {
-  description = "A classe de instância para o banco de dados RDS"
-  type        = string
-  default     = "db.t3.micro"
+  validation {
+    condition     = length(var.vpc_subnets) >= 2
+    error_message = "Pelo menos duas sub-redes devem ser especificadas para o RDS."
+  }
 }
 
 variable "db_name" {
@@ -45,4 +37,23 @@ variable "db_password" {
   type        = string
   default     = "adminpassword123"
   sensitive   = true
+}
+
+
+variable "db_allocated_storage" {
+  type        = number
+  description = "Tamanho do armazenamento alocado para o banco de dados em GB"
+  default     = 20
+}
+
+variable "db_instance_class" {
+  type        = string
+  description = "Classe da instância do banco de dados"
+  default     = "db.t3.micro"
+}
+
+variable "db_publicly_accessible" {
+  type        = bool
+  description = "Especifica se a instância RDS deve ser acessível publicamente"
+  default     = false
 }
